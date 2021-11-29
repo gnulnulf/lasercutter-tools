@@ -1,6 +1,8 @@
 Calibration
 ===========
 
+[calibration/calibrate.html]
+
 Inside the calibration folder there is a calibrate.html .
 You can place the file in your tinyweb on the cncjs installation or just open it with a browser.
 
