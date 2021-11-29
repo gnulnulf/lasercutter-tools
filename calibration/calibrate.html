@@ -1,0 +1,453 @@
+<!doctype html>
+<!--
+
+	Copyright (c) 2021 Arco van Geest <arco@appeltaart.mine.nu>
+
+-->
+<html lang="en">
+<head>
+<title>Lasercut calibrate</title>
+
+  <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.0/themes/base/jquery-ui.css">
+ 
+  <script src="https://code.jquery.com/jquery-3.6.0.js"></script>
+  <script src="https://code.jquery.com/ui/1.13.0/jquery-ui.js"></script>
+
+  <style id="local-css" type="text/css">
+      body { margin: 1em;}
+body {
+	font-family: Arial, Helvetica, sans-serif;
+}
+
+table {
+	font-size: 1em;
+}
+
+.ui-draggable, .ui-droppable {
+	background-position: top;
+}
+    /* EOS */
+  </style>
+</head>
+<body>
+<h1>Lasercutter Calibration</h1>
+<div id="accordion">
+<h3>Information</h3>
+<div>
+<p>
+Disclaimer: Use at own risk!
+</p>
+</div>
+
+
+<h3>Setup</h3>
+<div>
+<p>This will be added to all gcode files</p>
+    <label>start gcode</label><textarea rows="5" cols="60" id="taskstart">
+M4 S0
+S0
+G0X0Y0
+</textarea>
+
+<label>end gcode</label><textarea rows="5" cols="60" id="taskend">
+S0
+M5 S0</textarea><br />
+    
+</div><!-- setup -->
+
+<h3>Calibrate XY steps</h3>
+<div>
+
+<h2>X/Y steps per mm</h2>
+<p>This will generate gcode for a small 40mm x 40mm cube</p>
+    <form id="xy_steps">
+        <label>speed</label> <input type="text" id="xy_speed" name="xy_speed"><br />
+        <label>power</label> <input type="text" id="xy_power" name="xy_power"><span class="tip">(40% = 400)</span> <br />
+        <button type="button" id="generate_xy">Generate</button>
+        <button type="button" id="save_xy">save</button>
+    </form>        
+
+    <textarea rows="10" cols="60" id="xy_gcode"></textarea><br />
+<p>After engraving this file you should measure the X and Y size in mm.<br />
+If the line is wider measure from center to center.
+</p>
+    <form id="xy_calculate">
+        <label>current X steps/mm ($110)</label> <input type="text" id="x_steps_current" name="x_steps_current">
+        <label>measured X size (mm)</label> <input type="text" id="x_size" name="x_size"><br />
+
+        <label>current Y steps/mm ($111)</label> <input type="text" id="y_steps_current" name="y_steps_current">
+        <label>measured Y size (mm)</label> <input type="text" id="y_size" name="y_size"><br />
+		
+        <button type="button" id="calculate_xy">Calculate</button>
+    </form>        
+    <textarea rows="2" cols="60" id="calculate_xy_output"></textarea><br />
+
+</div><!-- calibrate_xy -->
+
+<h3>Focus</h3>
+<div>
+Only usefull for systems with Z-stepper.<br />
+Be sure to set the Z at 0 before starting.<br />
+Create lines from -1mm .. 0 .. 1mm with an extra marker at 0<br />
+
+	<form id="engrave_form">
+        <label>speed (mm/min)</label> <input type="text" id="focus_speed" name="focus_speed" value="800"><br />
+        <label>power (400=40%)</label> <input type="text" id="focus_power" name="focus_power" value="400"><br />
+    <button type="button" id="generate_focus">Generate</button>
+        <button type="button" id="save_focus">save</button>
+    </form>        
+    <textarea rows="10" cols="60" id="focus_gcode"></textarea><br />
+</div><!-- focus -->
+
+<h3>engrave speed/power (material)</h3>
+<div>
+    <form id="engrave_form">
+
+
+		<label>minimal speed (mm/min)</label> <input type="text" id="engrave_min_speed" name="engrave_min_speed" value="800"><br />
+        <label>maximum speed (mm/min)</label> <input type="text" id="engrave_max_speed" name="engrave_max_speed" value="1500"><br />
+        <label>minimal power (200=20%)</label> <input type="text" id="engrave_min_power" name="engrave_min_power" value="200"><br />
+        <label>maximum power (800=80%)</label> <input type="text" id="engrave_max_power" name="engrave_max_power" value="800"><br />
+
+		<label>speed steps (count)</label> <input type="text" id="engrave_speed_steps" name="engrave_speed_steps" value="5"><br />
+		<label>power steps (count)</label> <input type="text" id="engrave_power_steps" name="engrave_power_steps" value="5"><br />
+		<label>square size (mm)</label> <input type="text" id="engrave_size" name="engrave_size" value="10"><br />
+		<label>gap between squares (mm)</label> <input type="text" id="engrave_gap" name="engrave_gap" value="5"><br />
+		
+        <button type="button" id="generate_engrave">Generate</button>
+        <button type="button" id="save_engrave">save</button>
+    </form>        
+
+    <textarea rows="10" cols="60" id="engrave_gcode"></textarea><br />
+
+
+</div><!-- engrave -->
+
+<h3>cut passes (material)</h3>
+<div>
+	<form id="passes_form">
+        <label>power (800=80%)</label> <input type="text" id="passes_power" name="passes_power" value="800"><br />
+
+		<label>minimal speed (mm/min)</label> <input type="text" id="passes_min_speed" name="passes_min_speed" value="800"><br />
+        <label>maximum speed (mm/min)</label> <input type="text" id="passes_max_speed" name="passes_max_speed" value="1500"><br />
+        <label>minimal passes (count)</label> <input type="text" id="min_passes" name="min_passes" value="2"><br />
+        <label>maximum passes (count)</label> <input type="text" id="max_passes" name="max_passes" value="8"><br />
+
+		<label>Z movement per pass (mm)</label> <input type="text" id="passes_z_movement" name="passes_z_movement" value="0"><br />
+
+		
+		<label>speed steps (count)</label> <input type="text" id="passes_speed_steps" name="passes_speed_steps" value="5"><br />
+
+		<label>square size (mm)</label> <input type="text" id="passes_size" name="passes_size" value="10"><br />
+		<label>gap between squares (mm)</label> <input type="text" id="passes_gap" name="passes_gap" value="5"><br />
+		
+        <button type="button" id="generate_passes">Generate</button>
+        <button type="button" id="save_passes">save</button>
+    </form>        
+
+    <textarea rows="10" cols="60" id="passes_gcode"></textarea><br />
+
+</div><!-- cut -->
+
+
+
+
+
+<h3>grey scales power/speed (material)</h3>
+<div>
+	Probably just use a testfile. and import it to lasergrbl.
+</div><!-- grey scales -->
+
+
+
+</div><!-- accordion -->
+	
+
+
+<script type="text/javascript">//<![CDATA[
+  $( function() {
+    $( "#accordion" ).accordion({
+		heightStyle: "auto",
+		collapsible: true,
+		active: false
+	});
+  } );
+
+//
+// generate the gcode for the xy calibration
+//
+function generate_xy_gcode() {
+var speed=Number($('#xy_speed').val());
+var power=Number($('#xy_power').val());
+
+gcode="";
+gcode+=$('#taskstart').val();
+gcode+="\nM4 S"+power+"\n";
+gcode+="G1 X40Y0 F"+speed+"\n";
+gcode+="G1 X40Y40\n";
+gcode+="G1 X0Y40\n";
+gcode+="G1 X0Y0\n";
+gcode+="M4 S0\n";
+gcode+=$('#taskend').val();
+return gcode;
+}
+
+$('#generate_xy').bind( 'click', function(evt) {
+		$('#xy_gcode').val(generate_xy_gcode());
+	}
+);
+
+$('#save_xy').bind( 'click', function(evt) {
+		$('#xy_gcode').val(generate_xy_gcode());
+		gcode = generate_xy_gcode();
+		var gcodeblob = new Blob([gcode], { type: 'text/plain' });
+		var a = document.createElement('a');
+		a.download = 'calibrate_400x400.gcode';
+		a.href = window.URL.createObjectURL(gcodeblob);
+		a.textContent = 'Download ready';
+		a.style='display:none';
+		a.click(); 
+		
+	}
+);
+
+$('#calculate_xy').bind( 'click', function(evt) {
+		var new_x = Math.round( Number($('#x_steps_current').val())*1000* ( 40.0 / Number($('#x_size').val()) ))/1000;
+		var new_y = Math.round( Number($('#y_steps_current').val())*1000* ( 40.0 / Number($('#y_size').val()) ))/1000;
+		$('#calculate_xy_output').val(
+			"xsteps  $110="+new_x+"\n"
+			+"ysteps  $111="+new_y+"\n"
+		);
+	}
+);
+
+//
+// generate the gcode for the engrave speed/power test
+//
+function generate_engrave_gcode() {
+
+var speed_min=Number($('#engrave_min_speed').val());
+var speed_max=Number($('#engrave_max_speed').val());
+var laser_min=Number($('#engrave_min_power').val());
+var laser_max=Number($('#engrave_max_power').val());
+
+var speed_steps = Number($('#engrave_speed_steps').val());
+var power_steps = Number($('#engrave_power_steps').val());
+var size = Number($('#engrave_size').val());
+var gap = Number($('#engrave_gap').val());
+
+
+var speed_delta=speed_max-speed_min;
+var laser_delta=laser_max-laser_min;
+
+const date = new Date();
+
+gcode="";
+gcode+="( engrave test "+date.toDateString() +" "+date.toLocaleTimeString()+")\n";
+//TEST INPUT!
+
+gcode+=$('#taskstart').val();
+
+var speed = speed_min;
+for (var f=1;f<=speed_steps;f++) {
+	console.log(f);
+	var laser = laser_min;
+//	var speed=speed_min+((f-1)/(speed_steps))*speed_delta;
+	for (var s=1;s<=power_steps;s++) {
+	// var laser=laser_min+((s-1)/(power_steps))*laser_delta;
+		var x=(f-1)*(size+gap);
+		var y=(s-1)*(size+gap);
+		gcode+="(X"+x+"Y"+y+" F"+speed+" S"+laser+")\n";
+	 
+		gcode+="G0 X"+x+"Y"+y+"\n";
+		gcode+="M4 S"+laser+"\n";
+	 
+		gcode+="G1 X"+(x+size)+"Y"+y+" F"+speed+"\n";
+		gcode+="G1 X"+(x+size)+"Y"+(y+size)+"\n";
+		gcode+="G1 X"+(x+size)+"Y"+(y+size)+"\n";
+		gcode+="G1 X"+x+"Y"+(y+size)+"\n";
+		gcode+="G1 X"+x+"Y"+y+"\n";
+		gcode+="M4 S0\n";
+
+      laser += laser_delta/(power_steps-1);      	 
+	  console.log(laser);
+	}
+	speed += speed_delta/(speed_steps-1);
+}
+gcode+="M4 S0\n";
+gcode+=$('#taskend').val();
+return gcode;
+}
+
+$('#generate_engrave').bind( 'click', function(evt) {
+		$('#engrave_gcode').val(generate_engrave_gcode());
+	}
+);
+
+$('#save_engrave').bind( 'click', function(evt) {
+		$('#engrave_gcode').val(generate_engrave_gcode());
+		gcode = generate_engrave_gcode();
+		var gcodeblob = new Blob([gcode], { type: 'text/plain' });
+		var a = document.createElement('a');
+		a.download = 'engrave_test.gcode';
+		a.href = window.URL.createObjectURL(gcodeblob);
+		a.textContent = 'Download ready';
+		a.style='display:none';
+		a.click(); 
+		
+	}
+);
+
+//
+// generate the gcode for the focus calibration
+//
+function generate_focus_gcode() {
+var speed=Number($('#focus_speed').val());
+var power=Number($('#focus_power').val());
+
+const date = new Date();
+
+gcode="";
+gcode+="( focus test "+date.toDateString() +" "+date.toLocaleTimeString()+")\n";
+//TEST INPUT!
+
+gcode+=$('#taskstart').val();
+var x=0;
+for ( var z=-10; z<=10; z+=2) {
+gcode += "G0 "+(z/10)+"\n";
+if ( z==0 ) {
+	gcode+="G0 X"+x+"Y0\n";
+	gcode+="M4 S"+power+"\n";
+	gcode+="G1 X"+x+"Y3\n";
+	gcode+="M4 S0\n";
+}
+gcode+="G0 X"+x+"Y5\n";
+gcode+="M4 S"+power+"\n";
+gcode+="G1 X"+x+"Y25\n";
+gcode+="M4 S0\n";
+
+
+x+=3;
+}
+gcode+=$('#taskend').val();
+return gcode;
+}
+
+$('#generate_focus').bind( 'click', function(evt) {
+		$('#focus_gcode').val(generate_focus_gcode());
+	}
+);
+
+$('#save_focus').bind( 'click', function(evt) {
+		var gcode = generate_focus_gcode();
+		$('#focus_gcode').val(gcode);
+
+		var gcodeblob = new Blob([gcode], { type: 'text/plain' });
+		var a = document.createElement('a');
+		a.download = 'focus.gcode';
+		a.href = window.URL.createObjectURL(gcodeblob);
+		a.textContent = 'Download ready';
+		a.style='display:none';
+		a.click(); 
+		
+	}
+);
+
+
+//
+// generate the gcode for the passes test
+//
+function generate_passes_gcode() {
+
+var speed_min=Number($('#passes_min_speed').val());
+var speed_max=Number($('#passes_max_speed').val());
+var laser=Number($('#passes_power').val());
+var min_passes=Number($('#min_passes').val());
+var max_passes=Number($('#max_passes').val());
+
+var speed_steps = Number($('#passes_speed_steps').val());
+
+var size = Number($('#passes_size').val());
+var gap = Number($('#passes_gap').val());
+
+var speed_delta=speed_max-speed_min;
+var zmovement = Number($('#passes_z_movement').val());
+const date = new Date();
+
+gcode="";
+gcode+="( passes test "+date.toDateString() +" "+date.toLocaleTimeString()+")\n";
+//TEST INPUT!
+
+gcode+=$('#taskstart').val();
+
+var speed = speed_min;
+for (var f=1;f<=speed_steps;f++) {
+//	var speed=speed_min+((f-1)/(speed_steps))*speed_delta;
+	var y = 0;
+	var x=(f-1)*(size+gap);
+	for (var p=min_passes;p<=max_passes;p++) {
+	// var laser=laser_min+((s-1)/(power_steps))*laser_delta;
+		console.log(p);
+		gcode+="(X"+x+"Y"+y+" F"+speed+" Passes: "+p+")\n";
+		if ( zmovement != 0){
+			gcode+="G0 X"+x+"Y"+y+"Z0\n";
+
+		} else {
+			gcode+="G0 X"+x+"Y"+y+"\n";
+		}
+		for (i=0;i<p;i++) {
+			gcode+="M4 S"+laser+"\n";
+			gcode+="G1 X"+(x+size)+"Y"+y+" F"+speed+"\n";
+			gcode+="G1 X"+(x+size)+"Y"+(y+size)+"\n";
+			gcode+="G1 X"+(x+size)+"Y"+(y+size)+"\n";
+			gcode+="G1 X"+x+"Y"+(y+size)+"\n";
+			gcode+="G1 X"+x+"Y"+y+"\n";
+			gcode+="M4 S0\n";
+
+			if ( zmovement != 0){
+				gcode+="G91 Z-"+zmovement+"\n";
+			}
+		}
+		y+=size+gap;
+	}
+	speed += speed_delta/(speed_steps-1);
+}
+
+gcode+="M4 S0\n";
+gcode+=$('#taskend').val();
+return gcode;
+}
+
+$('#generate_passes').bind( 'click', function(evt) {
+		$('#passes_gcode').val(generate_passes_gcode());
+	}
+);
+
+$('#save_passes').bind( 'click', function(evt) {
+		$('#passes_gcode').val(generate_passes_gcode());
+		gcode = generate_passes_gcode();
+		var gcodeblob = new Blob([gcode], { type: 'text/plain' });
+		var a = document.createElement('a');
+		a.download = 'passes_test.gcode';
+		a.href = window.URL.createObjectURL(gcodeblob);
+		a.textContent = 'Download ready';
+		a.style='display:none';
+		a.click(); 
+		
+	}
+);
+
+
+//]]></script>
+  
+  
+  
+  
+  
+
+  
+</body>
+</html> 
+
