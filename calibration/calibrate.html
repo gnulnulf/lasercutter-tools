@@ -318,12 +318,12 @@ gcode+="( focus test "+date.toDateString() +" "+date.toLocaleTimeString()+")\n";
 
 gcode+=$('#taskstart').val();
 var x=0;
-for ( var z=-10; z<=10; z+=2) {
-gcode += "G0 "+(z/10)+"\n";
+for ( var z=-50; z<=50; z+=10) {
+gcode += "G0 Z"+(z/10)+"\n";
 if ( z==0 ) {
-	gcode+="G0 X"+x+"Y0\n";
+	gcode+="G0 X"+x+"Y0 F"+speed+"\n";
 	gcode+="M4 S"+power+"\n";
-	gcode+="G1 X"+x+"Y3\n";
+	gcode+="G1 X"+x+"Y3 F"+speed+"\n";
 	gcode+="M4 S0\n";
 }
 gcode+="G0 X"+x+"Y5\n";
