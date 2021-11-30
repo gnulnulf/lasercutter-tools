@@ -331,9 +331,9 @@ gcode+="M4 S"+power+"\n";
 gcode+="G1 X"+x+"Y25\n";
 gcode+="M4 S0\n";
 
-
 x+=3;
 }
+gcode+="G0 Z0\n";
 gcode+=$('#taskend').val();
 return gcode;
 }
